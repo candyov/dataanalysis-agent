@@ -321,6 +321,22 @@ def forecast(metric: str, source_id: str, table: str = "", date_col: str = "date
                 + ("季节感知: 检测到周期 " + str(period) + ", 已去季节后回归" if season_adjusted
                    else "线性回归, 未检测到显著季节周期") + "; 95%预测区间")
 
+        # ── 可预测性评分: 去季节回归 R² (残差占比), 衡量外推可靠性 ──
+        ss_res = float(np.sum((y_reg - fitted) ** 2))
+        ss_tot = float(np.sum((y_reg - np.mean(y_reg)) ** 2)) or 1e-9
+        r2 = max(0.0, min(1.0, 1 - ss_res / ss_tot))
+        predictability = round(r2 * 100)
+        pred_level = "高" if r2 >= 0.7 else ("中" if r2 >= 0.4 else "低")
+
+        # ── 三档情景 (每期: 乐观=区间上界 / 基准=预测值 / 保守=区间下界) ──
+        scenarios = [
+            {"period": int(xi - n + 1),
+             "optimistic": round(float(base_pred[k] + t_crit * se_fit[k]), 2),
+             "baseline": round(float(base_pred[k]), 2),
+             "conservative": round(float(base_pred[k] - t_crit * se_fit[k]), 2)}
+            for k, xi in enumerate(future_x)
+        ]
+
         return json.dumps({
             "metric": metric, "data_points": n, "agg_func": agg_func,
             "period": period, "season_adjusted": season_adjusted,
@@ -329,6 +345,9 @@ def forecast(metric: str, source_id: str, table: str = "", date_col: str = "date
             "current": round(float(values[-1]), 2),
             "predictions": predictions,
             "intervals": intervals,
+            "predictability": predictability,
+            "predictability_level": pred_level,
+            "scenarios": scenarios,
             "note": note,
         }, ensure_ascii=False)
     except ImportError:
