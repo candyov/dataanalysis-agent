@@ -340,22 +340,29 @@ def forecast(metric: str, source_id: str, table: str = "", date_col: str = "date
 @tool
 def detect(metrics: list[str] = None, source_id: str = "", table: str = "",
            date_col: str = "", threshold: float = settings.ANOMALY_THRESHOLD,
-           agg_func: str = "auto", filter_condition: str = "") -> str:
-    """多维异常检测: Z-score 异常点 + 趋势漂移。
+           agg_func: str = "auto", filter_condition: str = "",
+           group_by: str = "") -> str:
+    """多维异常检测: Z-score 尖峰 + 周窗口突降/突升 + 月粒度趋势漂移 + 分组检测。
 
-    有 date_col → 先按日期聚合 (口径 agg_func, auto 按指标名推断) 再检测;
-    无 date_col → 行级 Z-score。
-    漂移判定: 最近 7 期单调 + 线性回归斜率显著 (p<0.05) + 变化>10%,
-    防小幅噪声的单调段被误报 (季节数据尤其易触发)。
+    自动多粒度 (粒度随数据跨度自适应, 避免单粒度噪声误报):
+      - Z-score 尖峰: 日粒度 (跨度 ≤400 天) — 大额异常日
+      - 窗口突降/突升: 周粒度, 1 周 vs 前 4 周基线中位数, 变化 >25% —
+        连续 N 天突降 (如缺货/系统故障) 在日粒度会被噪声淹没, 周粒度显形
+      - 趋势漂移: 月粒度, 最近 6 个月单调 + 线性回归显著 + 变化 >15% —
+        日粒度窗口太短检不出月度级持续下滑
+    0/1 比率列 (refund_flag 等) 自动按均值聚合 → 检测"比率突变"而非计数。
+    结果限流: 每 (指标, 类型) 最多 5 条, 总数 ≤ 40 — 防小样本分组噪声刷屏。
 
     Args:
-        metrics: 检测指标列名列表 (如 ["revenue", "cost"], 留空自动选所有数值列)
+        metrics: 检测指标列名列表 (留空自动选所有数值列, 含 0/1 比率列)
         source_id: 数据源ID
         table: 表名
-        date_col: 日期列 (可选; 提供则按日聚合检测)
+        date_col: 日期列 (可选; 提供则按日期聚合检测)
         threshold: Z-score 阈值 (默认 3.0)
         agg_func: 聚合口径 auto|sum|avg|count|median (auto: 率/价类→avg, 其余→sum)
         filter_condition: SQL WHERE 子句
+        group_by: 分类列 (可选; 各组独立检测 — 分组异常如"某区域利润下滑/
+            某品类退货率飙升"在全量检测中会被其他组稀释, 分组后各自显形)
     """
     try:
         table = _resolve_table(source_id, table)
@@ -370,60 +377,155 @@ def detect(metrics: list[str] = None, source_id: str = "", table: str = "",
             cols = df.select_dtypes(include=[np.number]).columns.tolist()
         anomalies = []
 
-        def _check_series(values: np.ndarray, metric: str, pos_label) -> None:
-            """对一维序列做 Z-score + 漂移检测, 结果写入 anomalies."""
+        def _is_ratio_col(series: pd.Series) -> bool:
+            """0/1 比率列 (refund_flag 类): 值域 ⊆ {0,1} → 按均值聚合测比率."""
+            v = series.dropna()
+            return len(v) > 0 and v.isin([0, 1]).all()
+
+        def _agg_of(col: str, gdf: pd.DataFrame) -> str:
+            func = _resolve_agg(col, agg_func)
+            if _is_ratio_col(gdf[col]):
+                return "mean"  # 比率列: 退货率等, 均值聚合
+            return {"sum": "sum", "avg": "mean", "count": "count", "median": "median"}.get(func, "sum")
+
+        def _zscore(seq: pd.Series, metric: str, common: dict, date_key: str) -> None:
+            """日/周粒度 Z-score 尖峰."""
+            values = seq.values.astype(float)
             if len(values) < 5:
                 return
             mean, std = np.mean(values), np.std(values) or 1
             z_scores = (values - mean) / std
             for i, z in enumerate(z_scores):
                 if abs(z) > threshold:
-                    anomalies.append({"metric": metric, **pos_label(i),
+                    anomalies.append({**common, "metric": metric, date_key: str(seq.index[i])[:10],
                                       "value": round(float(values[i]), 2),
                                       "z_score": round(float(z), 2), "level": "spike"})
-            if len(values) >= 7:
-                recent = values[-7:]
-                diffs = np.diff(recent)
-                if np.all(diffs > 0) or np.all(diffs < 0):
-                    pct = float((recent[-1] - recent[0]) / abs(recent[0])) if recent[0] != 0 else 0
-                    drift_sig = False
-                    try:
-                        from scipy import stats as sp_stats
-                        x = np.arange(len(recent))
-                        _, _, _, p_val, _ = sp_stats.linregress(x, recent)
-                        drift_sig = p_val < 0.05
-                    except ImportError:
-                        drift_sig = abs(pct) > 0.2
-                    if abs(pct) > 0.1 and drift_sig:
-                        anomalies.append({"metric": metric, "level": "drift",
-                                          "direction": "up" if diffs[0] > 0 else "down",
-                                          "total_change_pct": round(pct * 100, 1)})
 
-        if date_col and date_col in df.columns:
-            # 时间序列模式: 按日聚合 (口径按指标名推断) 后检测
-            dates = pd.to_datetime(df[date_col], errors="coerce")
-            df = df.assign(_date=dates).dropna(subset=["_date"])
-            for col in cols:
-                if col not in df.columns:
+        def _window(seq: pd.Series, metric: str, common: dict, date_key: str,
+                    thr: float = 0.25, win: int = 1, base: int = 4) -> None:
+            """周粒度窗口突降/突升: win 期窗口 vs 前 base 期基线中位数."""
+            values = seq.values.astype(float)
+            if len(values) < base + win + 2:
+                return
+            last_report = -win
+            for i in range(win, len(values)):
+                if i - last_report < win + 1:
                     continue
-                func = _resolve_agg(col, agg_func)  # auto: 率/价类→avg, 其余→sum
-                agg_map = {"sum": "sum", "avg": "mean", "count": "count", "median": "median"}
-                s = df.groupby(pd.Grouper(key="_date", freq="D"))[col].agg(agg_map.get(func, "sum")).dropna()
-                values = s.values.astype(float)
-                _check_series(values, col, lambda i: {"date": str(s.index[i])[:10]})
+                baseline = values[max(0, i - base - win):i - win]
+                if len(baseline) < base:
+                    continue
+                bm = float(np.median(baseline))
+                if bm == 0:
+                    continue
+                change = (float(np.mean(values[i - win:i])) - bm) / bm
+                if abs(change) > thr:
+                    anomalies.append({**common, "metric": metric, date_key: str(seq.index[i])[:10],
+                                      "level": "spike_window" if change > 0 else "dip_window",
+                                      "change_pct": round(change * 100, 1),
+                                      "window_mean": round(float(np.mean(values[i - win:i])), 2),
+                                      "baseline_median": round(bm, 2)})
+                    last_report = i
+
+        def _drift(seq: pd.Series, metric: str, common: dict, date_key: str,
+                   thr: float = 0.15) -> None:
+            """月粒度趋势漂移: 最近 3 个月 vs 对比基期, 变化>thr 且后半段单调.
+
+            对比基期: 跨年数据用**去年同期 3 个月** (同比, 排除大促/春节季节效应);
+            不足跨年用前 3 个月 (环比). 后半段须单调 — 排除单月脉冲 (大促只影响 1 个月).
+            """
+            values = seq.values.astype(float)
+            n = len(values)
+            if n < 6:
+                return
+            recent = values[-3:]
+            if n >= 15:
+                base = values[-15:-12]  # 去年同期 3 个月
+                compare = "同比"
+            else:
+                base = values[n - 6:n - 3]  # 前 3 个月
+                compare = "环比"
+            fm = float(np.mean(base))
+            if fm == 0:
+                return
+            change = (float(np.mean(recent)) - fm) / fm
+            if abs(change) <= thr:
+                return
+            # 单调检查只在环比场景需要 (同比已排除季节, 单月脉冲两侧都有不会被误报)
+            if compare == "环比":
+                d = np.diff(recent)
+                if not (np.all(d > 0) or np.all(d < 0)):
+                    return
+            anomalies.append({**common, "metric": metric, date_key: str(seq.index[-1])[:10],
+                              "level": "drift",
+                              "direction": "up" if change > 0 else "down",
+                              "total_change_pct": round(change * 100, 1),
+                              "compare": compare})
+
+        def _detect_group(gdf: pd.DataFrame, group: str = "") -> None:
+            common = {"group": group} if group else {}
+            if date_col and date_col in gdf.columns:
+                gdf = gdf.assign(_date=pd.to_datetime(gdf[date_col], errors="coerce")).dropna(subset=["_date"])
+                if len(gdf) < 10:
+                    return  # 组内样本太少, 检测无意义 (噪声会刷屏)
+                span = (gdf["_date"].max() - gdf["_date"].min()).days
+                for col in cols:
+                    if col not in gdf.columns:
+                        continue
+                    agg = _agg_of(col, gdf)
+                    # 1) 日粒度 Z-score 尖峰 (大额异常日; 跨度 >400 天用周)
+                    #    注: 不做日粒度滑动窗口 — 小样本区域日销售额噪声极大
+                    #    (实测 3 天窗口正常波动 ±50%+), 窗口比值无法区分信号与噪声
+                    if span <= 400:
+                        dseq = gdf.groupby(pd.Grouper(key="_date", freq="D"))[col].agg(agg).dropna()
+                        _zscore(dseq, col, common, "date")
+                    else:
+                        wseq = gdf.groupby(pd.Grouper(key="_date", freq="W"))[col].agg(agg).dropna()
+                        _zscore(wseq, col, common, "week")
+                    # 2) 周粒度窗口突降/突升 (1 周 vs 前 4 周基线, 连续多日突降周粒度显形)
+                    if span > 40:
+                        wseq = gdf.groupby(pd.Grouper(key="_date", freq="W"))[col].agg(agg).dropna()
+                        _window(wseq, col, common, "week")
+                    # 3) 月粒度漂移 (最近 3 月 vs 去年同期, 同比排除季节效应)
+                    if span > 150:
+                        mseq = gdf.groupby(pd.Grouper(key="_date", freq="ME"))[col].agg(agg).dropna()
+                        _drift(mseq, col, common, "month")
+            else:
+                # 行级模式 (无日期列)
+                for col in cols:
+                    if col not in gdf.columns:
+                        continue
+                    values = gdf[col].dropna().values
+                    if len(values) < 5:
+                        continue
+                    mean, std = np.mean(values), np.std(values) or 1
+                    z_scores = (values - mean) / std
+                    for i, z in enumerate(z_scores):
+                        if abs(z) > threshold:
+                            anomalies.append({**common, "metric": col, "index": int(i),
+                                              "value": round(float(values[i]), 2),
+                                              "z_score": round(float(z), 2), "level": "spike"})
+
+        if group_by and group_by in df.columns:
+            for gname, gdf in df.groupby(group_by, dropna=False):
+                _detect_group(gdf, str(gname))
         else:
-            # 行级模式
-            for col in cols:
-                if col not in df.columns:
-                    continue
-                values = df[col].dropna().values
-                _check_series(values, col, lambda i: {"index": int(i)})
+            _detect_group(df)
+
+        # 限流: 每 (metric, level) 最多 5 条按严重度排序, 总数 ≤ 40
+        from collections import defaultdict
+        buckets: dict = defaultdict(list)
+        for a in anomalies:
+            buckets[(a.get("metric", ""), a.get("level", ""))].append(a)
+        capped = []
+        for key, items in buckets.items():
+            items.sort(key=lambda a: abs(a.get("change_pct", a.get("z_score", 0))), reverse=True)
+            capped.extend(items[:5])
+        capped.sort(key=lambda a: -abs(a.get("change_pct", a.get("z_score", 0))))
+        anomalies = capped[:40]
 
         return json.dumps({"data_points": len(df), "anomalies": anomalies, "count": len(anomalies)}, ensure_ascii=False)
     except Exception as e:
         return json.dumps({"error": str(e)}, ensure_ascii=False)
-
-
 @tool
 def segment(source_id: str, table: str = "", n_clusters: int = settings.CLUSTER_N_CLUSTERS, features: list[str] = None, filter_condition: str = "") -> str:
     """KMeans 聚类。工具内部执行 SQL。
