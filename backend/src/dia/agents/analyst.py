@@ -176,6 +176,47 @@ async def analysis_agent_node(state: dict, config=None) -> dict[str, Any]:
 tool_node = ToolNode(TOOLS)
 
 
+def _verify_chart_numbers(data, tool_results: list[str]) -> list[str]:
+    """图数据数值同源闸门: ≥1000 的大额数值必须在工具结果中找到 (10% 容差, 万换算).
+
+    防 LLM 直出图编造数字 — 与 reporter._verify_numbers 同思路:
+      - 只校验大额绝对值 (≥1000): 占比/率/单价等小值是工具结果的派生值, 跳过
+      - 支持万元换算: 图里 1454.8(万) ↔ 工具结果 14547994.36(元)
+    返回无来源的数值列表 (空 = 通过).
+    """
+    import re as _re
+
+    def extract(obj, out):
+        if isinstance(obj, dict):
+            for v in obj.values():
+                extract(v, out)
+        elif isinstance(obj, (list, tuple)):
+            for v in obj:
+                extract(v, out)
+        elif isinstance(obj, (int, float)) and not isinstance(obj, bool):
+            out.append(float(obj))
+
+    data_nums = []
+    extract(data, data_nums)
+    ctx_nums = set()
+    for text in tool_results:
+        for m in _re.finditer(r"(?<![A-Za-z_])(\d+(?:\.\d+)?)", str(text)):
+            try:
+                ctx_nums.add(round(float(m.group(1)), 4))
+            except ValueError:
+                continue
+
+    bad = []
+    for v in data_nums:
+        if v < 1000:
+            continue
+        candidates = (v, v * 10000, v / 10000)  # 元 / 万元 / 亿→元 换算
+        if any(any(abs(c - cv) / max(abs(c), 1e-9) < 0.1 for cv in ctx_nums) for c in candidates):
+            continue
+        bad.append(str(v))
+    return bad
+
+
 async def serial_tool_node(state: dict) -> dict:
     """串行工具执行节点 — 替代 ToolNode 的并行 gather.
 
@@ -198,6 +239,21 @@ async def serial_tool_node(state: dict) -> dict:
         if tool is None:
             new_msgs.append(ToolMessage(content=f"未知工具: {name}", tool_call_id=tc_id, name=name))
             continue
+        # 图数字闸门: LLM 直出图的大额数值必须能在历史工具结果中找到 (防编造)
+        if name == "build_chart":
+            tool_results_text = [
+                m.content for m in messages
+                if isinstance(m, ToolMessage) and m.name != "build_chart"
+            ]
+            bad = _verify_chart_numbers(args.get("data", {}), tool_results_text)
+            if bad:
+                new_msgs.append(ToolMessage(
+                    content=_json.dumps({
+                        "error": f"图表数值与数据不符, 疑似编造或转录错误: {bad[:8]}. "
+                                 f"请用 explore/forecast 等工具返回的真实数值重画 (图中数据需与工具结果一致)."
+                    }, ensure_ascii=False),
+                    tool_call_id=tc_id, name=name))
+                continue
         try:
             result = await tool.ainvoke(args) if hasattr(tool, "ainvoke") else tool.invoke(args)
             content = result if isinstance(result, str) else _json.dumps(result, ensure_ascii=False, default=str)
