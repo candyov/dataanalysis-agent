@@ -1,0 +1,122 @@
+[
+  {
+    "id": "case_01_data_quality",
+    "category": "data_quality",
+    "user_request": "这份数据整体质量如何？有哪些问题？",
+    "expected_intent": "data_quality",
+    "expected_tools": ["read_file", "profile_data", "check_quality"],
+    "min_expected_quality_score": 70
+  },
+  {
+    "id": "case_02_file_structure",
+    "category": "data_quality",
+    "user_request": "这个文件有几行几列？",
+    "expected_intent": "data_quality",
+    "expected_tools": ["read_file"],
+    "min_expected_columns": 3
+  },
+  {
+    "id": "case_03_trend_analysis",
+    "category": "trend",
+    "user_request": "销售额最近几个月的变化趋势是怎样的？",
+    "expected_intent": "trend",
+    "expected_tools": ["predict"],
+    "expected_chart_type": "line"
+  },
+  {
+    "id": "case_04_region_comparison",
+    "category": "comparison",
+    "user_request": "各个区域的销售额对比，哪个区域最高？",
+    "expected_intent": "comparison",
+    "expected_tools": ["drill_down"],
+    "expected_chart_type": "bar"
+  },
+  {
+    "id": "case_05_top_ranking",
+    "category": "comparison",
+    "user_request": "排名前三的品类是哪些？",
+    "expected_intent": "comparison",
+    "expected_tools": ["drill_down"],
+    "expected_chart_type": "bar"
+  },
+  {
+    "id": "case_06_anomaly_detection",
+    "category": "anomaly",
+    "user_request": "数据中有没有异常点？哪些月份表现异常？",
+    "expected_intent": "anomaly",
+    "expected_tools": ["detect_anomalies"],
+    "expected_chart_type": "line"
+  },
+  {
+    "id": "case_07_profit_drivers",
+    "category": "attribution",
+    "user_request": "影响利润的关键因素是什么？",
+    "expected_intent": "attribution",
+    "expected_tools": ["find_drivers"],
+    "expected_chart_type": "bar"
+  },
+  {
+    "id": "case_08_decline_reason",
+    "category": "attribution",
+    "user_request": "为什么华东区的利润一直在下降？",
+    "expected_intent": "attribution",
+    "expected_tools": ["drill_down", "find_drivers"],
+    "expected_chart_type": "bar"
+  },
+  {
+    "id": "case_09_customer_segment",
+    "category": "segmentation",
+    "user_request": "帮我按客户特征分群",
+    "expected_intent": "segmentation",
+    "expected_tools": ["segment"],
+    "expected_chart_type": "scatter"
+  },
+  {
+    "id": "case_10_comprehensive",
+    "category": "general_analysis",
+    "user_request": "分析这份数据，给我一份完整的业务报告",
+    "expected_intent": "general_analysis",
+    "expected_tools": ["explore_data", "predict", "drill_down"],
+    "expected_chart_type": "bar"
+  },
+  {
+    "id": "case_11_simple_viz",
+    "category": "visualization",
+    "user_request": "画一个各区域销售额的饼图",
+    "expected_intent": "visualization",
+    "expected_tools": ["build_chart"],
+    "expected_chart_type": "pie"
+  },
+  {
+    "id": "case_12_growth_rate",
+    "category": "trend",
+    "user_request": "各品类增速对比",
+    "expected_intent": "comparison",
+    "expected_tools": ["drill_down", "predict"],
+    "expected_chart_type": "bar"
+  },
+  {
+    "id": "case_13_cleaning_request",
+    "category": "data_quality",
+    "user_request": "帮我把数据清洗一下",
+    "expected_intent": "data_quality",
+    "expected_tools": ["read_file", "check_quality", "clean_data"],
+    "min_expected_quality_improvement": true
+  },
+  {
+    "id": "case_14_multi_dimension",
+    "category": "general_analysis",
+    "user_request": "按区域和品类两个维度分析销售表现",
+    "expected_intent": "general_analysis",
+    "expected_tools": ["drill_down", "explore_data"],
+    "expected_chart_type": "heatmap"
+  },
+  {
+    "id": "case_15_edge_case",
+    "category": "data_quality",
+    "user_request": "有哪些列名？",
+    "expected_intent": "data_quality",
+    "expected_tools": ["read_file"],
+    "min_expected_columns": 2
+  }
+]

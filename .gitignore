@@ -1,0 +1,55 @@
+# Environment & secrets
+.env
+*.env.local
+*.env.*.local
+.env.development
+.env.production
+.env.test
+*.key
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node / Frontend
+node_modules/
+frontend/dist/
+
+# Storage & data
+storage/
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# WorkBuddy
+.workbuddy/
+
+# 一次性调试/日志/渲染产物 (2026-08-10 上传前清理)
+backend/check_ds.py
+backend/report_online.html
+backend/report_planC.html
+backend/report_test.html
+backend/sse_*.txt
+backend/test_result.json
+项目经历.md
+项目问题排查报告.md

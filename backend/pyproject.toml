@@ -1,0 +1,15 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "analysis-copilot"
+version = "0.3.0"
+description = "AI 智能数据分析平台 — Multi-Agent 架构"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+# e2e 需要运行中的后端服务, 默认跳过; 手动跑: pytest tests/e2e -p no:cacheprovider
+addopts = "--ignore=tests/e2e --ignore=tests/test_e2e.py --ignore=tests/test_e2e_v2.py"
