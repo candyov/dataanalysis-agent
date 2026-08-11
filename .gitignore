@@ -23,6 +23,7 @@ htmlcov/
 # Node / Frontend
 node_modules/
 frontend/dist/
+frontend/.vite/
 
 # Storage & data
 storage/
