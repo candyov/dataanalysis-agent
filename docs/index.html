@@ -1,149 +1,76 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>全面分析该数据</title>
-<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
-<style>
-:root { --blue:#2563eb; --green:#16a34a; --orange:#d97706; --purple:#7c3aed; --teal:#0891b2; --red:#dc2626;
-  --bg:#f5f7fa; --card-bg:#fff; --text:#1e293b; --text-secondary:#64748b; --border:#e2e8f0;
-  --primary-light:#dbeafe; --success-light:#dcfce7; --warning-light:#fef3c7; --danger-light:#fee2e2;
-  --shadow:0 1px 3px rgba(0,0,0,.08); }
+<!DOCTYPE html><html lang='zh-CN'><head><meta charset='UTF-8'><title>全面分析该数据</title><script src='https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js'></script><style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:'PingFang SC','Microsoft YaHei',sans-serif; background:var(--bg); color:var(--text); padding:24px; line-height:1.6; }
-.container { max-width:1200px; margin:0 auto; }
-.report-header { background:linear-gradient(135deg,#1e40af,#3b82f6); color:#fff; border-radius:16px; padding:32px 40px; margin-bottom:24px; box-shadow:0 4px 12px rgba(30,64,175,.2); }
-.report-header h1 { font-size:28px; font-weight:700; margin-bottom:8px; }
-.report-header .subtitle { font-size:14px; opacity:.85; }
-.report-header .meta { display:flex; gap:24px; margin-top:16px; font-size:13px; opacity:.9; flex-wrap:wrap; }
-.kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-bottom:24px; }
-.kpi-card { background:var(--card-bg); border-radius:12px; padding:20px 24px; box-shadow:var(--shadow); border-left:4px solid var(--blue); transition:transform .2s; }
-.kpi-card:hover { transform:translateY(-2px); }
-.kpi-card.green { border-left-color:var(--green); } .kpi-card.orange { border-left-color:var(--orange); } .kpi-card.purple { border-left-color:var(--purple); }
-.kpi-label { font-size:13px; color:var(--text-secondary); margin-bottom:6px; }
-.kpi-value { font-size:26px; font-weight:700; color:var(--text); }
-.kpi-sub { font-size:12px; color:var(--text-secondary); margin-top:4px; }
-.badge { display:inline-block; padding:2px 10px; border-radius:12px; font-size:12px; font-weight:600; margin-left:8px; }
-.badge-A,.badge-a { background:#dcfce7; color:#166534; } .badge-B,.badge-b { background:#fef9c3; color:#854d0e; }
-.badge-C,.badge-c { background:#ffedd5; color:#9a3412; } .badge-D,.badge-d { background:#fee2e2; color:#991b1b; }
-.section { background:var(--card-bg); border-radius:12px; padding:24px 28px; margin-bottom:24px; box-shadow:var(--shadow); }
-.section-title { font-size:18px; font-weight:700; margin-bottom:4px; display:flex; align-items:center; gap:8px; }
-.section-title .icon { font-size:22px; }
-.section-desc { font-size:13px; color:var(--text-secondary); margin-bottom:20px; }
-.chart-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:20px; margin-bottom:16px; }
-.chart-box { background:#fafbfc; border-radius:10px; padding:16px; border:1px solid var(--border); }
-.chart-box h4 { font-size:14px; font-weight:600; margin-bottom:12px; color:var(--text); }
-.chart-wrapper { position:relative; height:300px; }
-.chart-wrapper.tall { height:400px; }
-.dq-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin-bottom:16px; }
-.dq-item { background:#fafbfc; border-radius:10px; padding:16px 20px; border:1px solid var(--border); }
-.dq-item.warning { border-color:var(--orange); background:var(--warning-light); }
-.dq-item.danger { border-color:var(--red); background:var(--danger-light); }
-.dq-item.ok { border-color:var(--green); background:var(--success-light); }
-.dq-label { font-size:13px; color:var(--text-secondary); }
-.dq-value { font-size:22px; font-weight:700; }
-.dq-detail { font-size:12px; color:var(--text-secondary); margin-top:4px; }
-.insight-box { background:var(--primary-light); border-left:4px solid var(--blue); border-radius:8px; padding:16px 20px; margin-top:16px; }
-.insight-box h5 { font-size:14px; font-weight:700; margin-bottom:8px; }
-.insight-box ul { padding-left:20px; }
-.insight-box li { font-size:13px; margin-bottom:4px; }
-.insight-box.warning { background:var(--warning-light); border-left-color:var(--orange); }
-.insight-box.success { background:var(--success-light); border-left-color:var(--green); }
-.data-table { width:100%; border-collapse:collapse; font-size:13px; }
-.data-table th { background:#f1f5f9; padding:10px 12px; text-align:left; font-weight:600; color:var(--text-secondary); border-bottom:2px solid var(--border); white-space:nowrap; }
-.data-table td { padding:10px 12px; border-bottom:1px solid var(--border); white-space:nowrap; }
-.data-table tr:hover td { background:#f8fafc; }
-.data-table .num { text-align:right; font-variant-numeric:tabular-nums; }
-.rec-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:16px; }
-.rec-card { background:#fafbfc; border-radius:10px; padding:20px; border:1px solid var(--border); border-top:3px solid var(--blue); }
-.rec-card h5 { font-size:15px; font-weight:700; margin-bottom:8px; }
-.rec-card .priority { font-size:12px; margin-bottom:8px; }
-.rec-card p { font-size:13px; color:var(--text-secondary); }
-.report-footer { text-align:center; padding:24px; color:var(--text-secondary); font-size:13px; }
-.empty { color:#94a3b8; font-size:13px; padding:20px; text-align:center; }
-.finding { display:flex; gap:12px; padding:10px 0; border-bottom:1px solid #f1f5f9; }
-.finding:last-child { border-bottom:none; }
-.level { flex-shrink:0; padding:2px 8px; border-radius:6px; font-size:12px; font-weight:600; height:fit-content; }
-.level-强 { background:#dcfce7; color:#166534; } .level-弱 { background:#fef9c3; color:#854d0e; } .level-推测 { background:#e0e7ff; color:#3730a3; }
-.finding .claim { font-size:14px; line-height:1.7; color:var(--text); }
-@media (max-width:768px) { .kpi-grid { grid-template-columns:repeat(2,1fr); } .chart-row { grid-template-columns:1fr; } .rec-grid { grid-template-columns:1fr; } }
-</style>
-</head>
-<body>
-<div class="container">
-  <div class="report-header">
-    <h1>全面分析该数据<span class="badge badge-a">质量A</span></h1>
-    <div class="subtitle">数据源: 22ee0e38-43c1-426e-ae80-83da1efb297d | 时间跨度: 2 个表 | 有效记录: 15052 条</div>
-    <div class="meta">覆盖维度: 6 个 · 生成时间: 2026-08-12 12:07</div>
-  </div>
-  <div class="kpi-grid"><div class="kpi-card "><div class="kpi-label">总营收</div><div class="kpi-value">4954.7万</div></div><div class="kpi-card green"><div class="kpi-label">总销售额</div><div class="kpi-value">4954.7万</div></div><div class="kpi-card orange"><div class="kpi-label">利润率</div><div class="kpi-value">22.3%</div></div></div>
-  <div class="section"><div class="section-title"><span class="icon">🔍</span>数据质量评估</div>
-<div class="section-desc">原始数据完整性、一致性和准确性校验结果。</div>
-<div class="dq-grid"><div class="dq-item ok"><div class="dq-label">原始记录数</div><div class="dq-value">15052</div><div class="dq-detail">有效记录</div></div><div class="dq-item ok"><div class="dq-label">综合质量等级</div><div class="dq-value">A</div><div class="dq-detail">1个阻塞 / 1个降级</div></div><div class="dq-item danger"><div class="dq-label">阻塞问题</div><div class="dq-value">1</div><div class="dq-detail">无。数据无缺失、无重复行，核心数值列(sales/cost/profit/quantity)数据完整</div></div><div class="dq-item warning"><div class="dq-label">降级问题</div><div class="dq-value">1</div><div class="dq-detail">refund_flag: 96% 零值 → 这是业务常态（退款率约 4%），非数据质量问题，但若做退</div></div></div>
-<div class="insight-box warning"><h5>⚠️ 数据质量风险</h5><ul><li>无。数据无缺失、无重复行，核心数值列(sales/cost/profit/quantity)数据完整。</li></ul></div>
-</div>
-<div class="section"><div class="section-title"><span class="icon">📈</span>时间趋势分析</div>
-<div class="section-desc">按day粒度展示 2024-01-01 至 2025-06-30 的变化趋势。</div>
-<div class="chart-row"><div class="chart-box"><h4>月度营收与利润趋势（2024-01 ~ 2025-06）</h4><div id="chart_1" class="chart-wrapper"></div></div><div class="chart-box"><h4>未来3个月营收预测（趋势不显著，波动大，R²≈0）</h4><div id="chart_2" class="chart-wrapper"></div></div></div>
-<div class="insight-box"><h5>📊 时间趋势分析洞察</h5><ul><li>- 区域销售额差异显著（Kruskal-Wallis，p&lt;0.05），华东均值5006元显著高于华南4175元（p=0.0）和华北3689元（p=0.0）。
-- 渠道平均订单金额差异显著（Welch t-test，p&lt;0.05），线下均值3859元显著高于线上3112元（均值差-746元，p=0.0）和分销2868元。
-- 产品利润差异检验中，电子产品利润均值932.6元与服装868.8元差异显著（p&lt;0.05），但与家居用品966.5元差异不显著（p=0.79）。
-- 归因分析显示成本与销售额相关系数0.992，区域“华东”对应销售额系数为3541.7（p&lt;0.0），对销售额有显著正向影响。
-- 总销售额右偏（偏度5.49），中位数1669.9元远低于均值3291元，前20%订单贡献62.2%的销售额。
-- 线上退货率5%最高，线下2%最低，整体退货率约3.7%（562/15052）。
-- 电子产品销售额占比48.4%（2399万），居所有品类之首，食品饮料仅占4.2%（208万）。
-- 月度销售额环比激增105%（20</li></ul></div>
-</div>
-<div class="section"><div class="section-title"><span class="icon">📊</span>各level对比分析</div>
-<div class="section-desc">按level维度拆解核心指标, 识别头部与尾部差异。</div>
-</div>
-<div class="section"><div class="section-title"><span class="icon">📊</span>各city对比分析</div>
-<div class="section-desc">按city维度拆解核心指标, 识别头部与尾部差异。</div>
-</div>
-<div class="section"><div class="section-title"><span class="icon">📊</span>各region对比分析</div>
-<div class="section-desc">按region维度拆解核心指标, 识别头部与尾部差异。</div>
-<div class="chart-row"><div class="chart-box"><h4>各区域营收对比（所有区域差异显著 p&lt;0.001）</h4><div id="chart_3" class="chart-wrapper"></div></div><div class="chart-box"><h4>各区域利润贡献占比</h4><div id="chart_4" class="chart-wrapper"></div></div><div class="chart-box"><h4>区域×品类营收热力图（华东+电子产品=绝对核心）</h4><div id="chart_5" class="chart-wrapper"></div></div></div>
-</div>
-<div class="section"><div class="section-title"><span class="icon">📊</span>各category对比分析</div>
-<div class="section-desc">按category维度拆解核心指标, 识别头部与尾部差异。</div>
-<div class="chart-row"><div class="chart-box"><h4>各品类营收占比（电子产品独占48.4%）</h4><div id="chart_6" class="chart-wrapper"></div></div><div class="chart-box"><h4>各品类利润率对比（电子产品利润率垫底仅10.6%）</h4><div id="chart_7" class="chart-wrapper"></div></div><div class="chart-box"><h4>各品类利润贡献占比（电子产品利润占比仅22.9%，远低于其营收占比48.4%）</h4><div id="chart_8" class="chart-wrapper"></div></div></div>
-</div>
-<div class="section"><div class="section-title"><span class="icon">📊</span>各channel对比分析</div>
-<div class="section-desc">按channel维度拆解核心指标, 识别头部与尾部差异。</div>
-<div class="chart-row"><div class="chart-box"><h4>各渠道营收对比（线下客单价最高 p&lt;0.001）</h4><div id="chart_9" class="chart-wrapper"></div></div><div class="chart-box"><h4>各渠道退款率对比（线上5.1%为线下3倍）</h4><div id="chart_10" class="chart-wrapper"></div></div><div class="chart-box"><h4>渠道×客户类型营收热力图（线上个人占比40.3%）</h4><div id="chart_11" class="chart-wrapper"></div></div></div>
-</div>
-<div class="section"><div class="section-title"><span class="icon">📊</span>各customer_type对比分析</div>
-<div class="section-desc">按customer_type维度拆解核心指标, 识别头部与尾部差异。</div>
-</div>
-<div class="section"><div class="section-title"><span class="icon">🔥</span>level × city 交叉分析</div>
-<div class="section-desc">识别不同level在不同city上的表现差异, 发现优势组合。</div>
-</div>
-<div class="section"><div class="section-title"><span class="icon">🔥</span>city × region 交叉分析</div>
-<div class="section-desc">识别不同city在不同region上的表现差异, 发现优势组合。</div>
-</div>
-<div class="section"><div class="section-title"><span class="icon">📅</span>年度对比分析</div>
-<div class="section-desc">跨年度核心指标对比 (2024, 2025)。</div>
-</div>
-<div class="section"><div class="section-title"><span class="icon">🏆</span>Top 10 total_sales最高记录</div>
-<div class="section-desc">识别total_sales最高的10条记录, 分析大单特征。</div>
-<div class="chart-row"><div class="chart-box"><h4>订单销售额分布（右偏严重，Top20%贡献62.2%营收）</h4><div id="chart_12" class="chart-wrapper"></div></div></div>
-</div>
-  <div class="report-footer">由 AI 数据分析平台自动生成 · 2026-08-12 12:07</div>
-</div>
-<script>
-(function(){var el=document.getElementById('chart_1');if(el){var c=echarts.init(el);c.setOption({"title": {"text": "月度营收与利润趋势（2024-01 ~ 2025-06）", "left": "center"}, "tooltip": {}, "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": true}, "animation": true, "xAxis": {"type": "category", "data": ["2024-01", "2024-02", "2024-03", "2024-04", "2024-05", "2024-06", "2024-07", "2024-08", "2024-09", "2024-10", "2024-11", "2024-12", "2025-01", "2025-02", "2025-03", "2025-04", "2025-05", "2025-06"]}, "yAxis": {"type": "value"}, "series": [{"name": "营收(万元)", "type": "line", "data": [259.95, 139.59, 244.28, 232.12, 249.08, 418.83, 264.61, 252.04, 256.69, 277.71, 468.09, 320.69, 238.88, 122.05, 247.84, 247.38, 234.32, 480.58]}, {"name": "利润(万元)", "type": "line", "data": [56.05, 30.58, 55.53, 52.72, 56.18, 97.42, 56.61, 56.81, 57.19, 62.99, 101.63, 69.48, 56.0, 26.4, 57.51, 55.85, 52.74, 103.44]}]});window.addEventListener('resize',function(){c.resize();});}})();
-(function(){var el=document.getElementById('chart_2');if(el){var c=echarts.init(el);c.setOption({"title": {"text": "未来3个月营收预测（趋势不显著，波动大，R²≈0）", "left": "center"}, "tooltip": {}, "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": true}, "animation": true, "xAxis": {"type": "category", "data": ["2025-07", "2025-08", "2025-09"]}, "yAxis": {"type": "value"}, "series": [{"name": "预测营收(万元)", "type": "line", "data": [9.03, 9.14, 8.47]}, {"name": "乐观", "type": "line", "data": [16.07, 16.18, 15.51]}, {"name": "保守", "type": "line", "data": [1.99, 2.11, 1.43]}]});window.addEventListener('resize',function(){c.resize();});}})();
-(function(){var el=document.getElementById('chart_3');if(el){var c=echarts.init(el);c.setOption({"title": {"text": "各区域营收对比（所有区域差异显著 p\u003c0.001）", "left": "center"}, "tooltip": {}, "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": true}, "animation": true, "xAxis": {"type": "category", "data": ["华东", "华南", "华北", "华中", "西南", "西北", "东北"]}, "yAxis": {"type": "value"}, "series": [{"name": "营收(万元)", "type": "bar", "data": [1454.8, 1105.11, 883.48, 641.37, 414.18, 250.99, 204.78]}]});window.addEventListener('resize',function(){c.resize();});}})();
-(function(){var el=document.getElementById('chart_4');if(el){var c=echarts.init(el);c.setOption({"title": {"text": "各区域利润贡献占比", "left": "center"}, "tooltip": {}, "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": true}, "animation": true, "series": [{"type": "pie", "radius": "60%", "data": [{"name": "华东", "value": 29.7}, {"name": "华南", "value": 22.5}, {"name": "华北", "value": 17.4}, {"name": "华中", "value": 12.8}, {"name": "西南", "value": 8.4}, {"name": "西北", "value": 5.2}, {"name": "东北", "value": 4.1}]}]});window.addEventListener('resize',function(){c.resize();});}})();
-(function(){var el=document.getElementById('chart_5');if(el){var c=echarts.init(el);c.setOption({"title": {"text": "区域×品类营收热力图（华东+电子产品=绝对核心）", "left": "center"}, "tooltip": {}, "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": true}, "animation": true, "xAxis": {"type": "category", "data": ["华东", "华南", "华北", "华中", "西南", "西北", "东北"], "splitArea": {"show": true}}, "yAxis": {"type": "category", "data": ["电子产品", "家居用品", "服装", "运动户外", "美妆个护", "食品饮料"], "splitArea": {"show": true}}, "visualMap": {"min": 0, "max": 689.53, "calculable": true, "orient": "horizontal", "left": "center", "bottom": 0, "inRange": {"color": ["#f7fbff", "#08519c"]}}, "series": [{"type": "heatmap", "data": [[0, 0, 689.53], [0, 1, 244.5], [0, 2, 174.36], [0, 3, 176.34], [0, 4, 110.2], [0, 5, 59.87], [1, 0, 533.01], [1, 1, 176.11], [1, 2, 152.47], [1, 3, 119.64], [1, 4, 80.25], [1, 5, 43.61], [2, 0, 445.76], [2, 1, 141.03], [2, 2, 104.57], [2, 3, 96.33], [2, 4, 61.73], [2, 5, 34.06], [3, 0, 319.66], [3, 1, 101.55], [3, 2, 82.1], [3, 3, 62.86], [3, 4, 46.69], [3, 5, 28.52], [4, 0, 202.75], [4, 1, 65.27], [4, 2, 48.54], [4, 3, 45.98], [4, 4, 32.12], [4, 5, 19.52], [5, 0, 116.53], [5, 1, 41.44], [5, 2, 32.77], [5, 3, 27.99], [5, 4, 20.15], [5, 5, 12.11], [6, 0, 91.88], [6, 1, 32.64], [6, 2, 28.86], [6, 3, 24.36], [6, 4, 16.74], [6, 5, 10.3]], "label": {"show": true, "fontSize": 10}}]});window.addEventListener('resize',function(){c.resize();});}})();
-(function(){var el=document.getElementById('chart_6');if(el){var c=echarts.init(el);c.setOption({"title": {"text": "各品类营收占比（电子产品独占48.4%）", "left": "center"}, "tooltip": {}, "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": true}, "animation": true, "series": [{"type": "pie", "radius": "60%", "data": [{"name": "电子产品", "value": 48.4}, {"name": "家居用品", "value": 16.2}, {"name": "服装", "value": 12.6}, {"name": "运动户外", "value": 11.2}, {"name": "美妆个护", "value": 7.4}, {"name": "食品饮料", "value": 4.2}]}]});window.addEventListener('resize',function(){c.resize();});}})();
-(function(){var el=document.getElementById('chart_7');if(el){var c=echarts.init(el);c.setOption({"title": {"text": "各品类利润率对比（电子产品利润率垫底仅10.6%）", "left": "center"}, "tooltip": {}, "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": true}, "animation": true, "xAxis": {"type": "category", "data": ["美妆个护", "服装", "运动户外", "家居用品", "食品饮料", "电子产品"]}, "yAxis": {"type": "value"}, "series": [{"name": "利润率(%)", "type": "bar", "data": [48.3, 35.9, 31.4, 28.5, 22.9, 10.6]}]});window.addEventListener('resize',function(){c.resize();});}})();
-(function(){var el=document.getElementById('chart_8');if(el){var c=echarts.init(el);c.setOption({"title": {"text": "各品类利润贡献占比（电子产品利润占比仅22.9%，远低于其营收占比48.4%）", "left": "center"}, "tooltip": {}, "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": true}, "animation": true, "series": [{"type": "pie", "radius": "60%", "data": [{"name": "电子产品", "value": 22.9}, {"name": "家居用品", "value": 20.7}, {"name": "服装", "value": 20.3}, {"name": "美妆个护", "value": 16.1}, {"name": "运动户外", "value": 15.7}, {"name": "食品饮料", "value": 4.3}]}]});window.addEventListener('resize',function(){c.resize();});}})();
-(function(){var el=document.getElementById('chart_9');if(el){var c=echarts.init(el);c.setOption({"title": {"text": "各渠道营收对比（线下客单价最高 p\u003c0.001）", "left": "center"}, "tooltip": {}, "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": true}, "animation": true, "xAxis": {"type": "category", "data": ["线上", "线下", "分销"]}, "yAxis": {"type": "value"}, "series": [{"name": "营收(万元)", "type": "bar", "data": [2454.46, 1733.37, 766.88]}]});window.addEventListener('resize',function(){c.resize();});}})();
-(function(){var el=document.getElementById('chart_10');if(el){var c=echarts.init(el);c.setOption({"title": {"text": "各渠道退款率对比（线上5.1%为线下3倍）", "left": "center"}, "tooltip": {}, "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": true}, "animation": true, "xAxis": {"type": "category", "data": ["线上", "分销", "线下"]}, "yAxis": {"type": "value"}, "series": [{"name": "退款率(%)", "type": "bar", "data": [5.1, 3.0, 1.7]}]});window.addEventListener('resize',function(){c.resize();});}})();
-(function(){var el=document.getElementById('chart_11');if(el){var c=echarts.init(el);c.setOption({"title": {"text": "渠道×客户类型营收热力图（线上个人占比40.3%）", "left": "center"}, "tooltip": {}, "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": true}, "animation": true, "xAxis": {"type": "category", "data": ["线上", "线下", "分销"], "splitArea": {"show": true}}, "yAxis": {"type": "category", "data": ["个人", "企业"], "splitArea": {"show": true}}, "visualMap": {"min": 0, "max": 1997.02, "calculable": true, "orient": "horizontal", "left": "center", "bottom": 0, "inRange": {"color": ["#f7fbff", "#08519c"]}}, "series": [{"type": "heatmap", "data": [[0, 0, 1997.02], [0, 1, 457.44], [1, 0, 1403.69], [1, 1, 329.68], [2, 0, 612.7], [2, 1, 154.18]], "label": {"show": true, "fontSize": 10}}]});window.addEventListener('resize',function(){c.resize();});}})();
-(function(){var el=document.getElementById('chart_12');if(el){var c=echarts.init(el);c.setOption({"title": {"text": "订单销售额分布（右偏严重，Top20%贡献62.2%营收）", "left": "center"}, "tooltip": {}, "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": true}, "animation": true, "xAxis": {"type": "category", "data": ["P5", "P25", "P50", "P75", "P95"]}, "yAxis": {"type": "value"}, "series": [{"name": "销售额(元)", "type": "bar", "data": [206.03, 730.21, 1669.88, 3848.31, 12071.08]}]});window.addEventListener('resize',function(){c.resize();});}})();
-</script>
-</body>
-</html>
+body { font-family:'PingFang SC','Microsoft YaHei',sans-serif; background:#f5f7fa; color:#1e293b; padding:24px; line-height:1.7; }
+.container { max-width:960px; margin:0 auto; }
+.report-header { background:linear-gradient(135deg,#1e40af,#3b82f6); color:#fff; border-radius:14px; padding:24px 32px; margin-bottom:20px; }
+.report-header h1 { font-size:22px; margin-bottom:6px; }
+.report-header .meta { font-size:13px; opacity:.85; }
+.section { background:#fff; border-radius:12px; padding:22px 26px; margin-bottom:18px; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+.chart-box { margin-top:16px; }
+.chart-box h4 { font-size:14px; color:#475569; margin-bottom:8px; }
+.chart-wrapper { height:320px; }
+.report-footer { text-align:center; padding:18px; color:#94a3b8; font-size:13px; }
+.section table { border-collapse:collapse; width:100%; margin:12px 0; font-size:14px; }
+.section th, .section td { border:1px solid #e2e8f0; padding:8px 12px; text-align:left; }
+.section th { background:#f1f5f9; }
+.section ul, .section ol { padding-left:24px; margin:8px 0; }
+.section h1 { font-size:20px; margin:14px 0 8px; }
+.section h2 { font-size:18px; margin:14px 0 8px; }
+.section h3 { font-size:16px; margin:14px 0 8px; }
+.section h4 { font-size:14px; margin:12px 0 6px; }
+.section p { margin:8px 0; }
+</style></head><body><div class='container'><div class='report-header'><h1>全面分析该数据</h1><div class='meta'>数据源: analysis_test · 会话 sess_1786506034241</div></div><div class='section'><h3>一、核心结论</h3>
+<ol>
+<li>华东贡献24%营收、28%利润，是东北的2.1倍——资源投入应优先倾斜华东（证据 ）。</li>
+<li>电子产品营收占比48.4%，利润仅占22.9%，利润率10.6%垫底，规模扩张未有效转化为利润（证据 ）。</li>
+<li>线上退款率5.1%为线下的3倍，每百单吞噬约1.56万元毛利，渠道风险需优先管控（证据 ）。</li>
+<li>前20%大单贡献62.2%营收，业务高度依赖头部客户，抗波动能力脆弱（证据 ）。</li>
+<li>未来3个月营收预测区间宽至14万~16万元/日，需按保守情景（约2万元/日）做预算缓冲（证据 ）。</li>
+</ol></div><div class='section'><h3>二、关键发现</h3>
+<p><strong>发现1：华东独揽近四分之一营收，区域分化严重</strong> 
+华东区域营收占总营收的24%（1,420万），是东北（670万，11.5%）的2.1倍；华东订单均值5,006元，显著高于华北的3,689元（均值差1,317元，Mann-Whitney p&lt;0.001，效应量0.138）和华南的4,175元（p&lt;0.001）。归因：华东高客单价订单集中，且与电子产品的强关联（热力图印证）放大了营收差距。该区域应作为增长根据地，资源投放可获最高边际回报。 
+（</p></div><div class='chart-box'><h4>各区域营收对比（所有区域差异显著 p<0.001）</h4><div id='c1' class='chart-wrapper'></div></div><div class='section'><p>）</p>
+<p><strong>发现2：利润向华东集中的程度超过营收，区域盈利能力分化</strong> 
+华东利润占比28%，高于其24%的营收占比；而东北营收占比11.5%，利润占比仅8%，利润“缺血”明显。归因：华东产品组合中高利润品类（如家居、服装）占比更高，使利润转化效率优于其他区域。若仅按营收配置资源，会低估优质区域的盈利潜力，建议将利润贡献纳入区域考核权重。 
+（</p></div><div class='chart-box'><h4>各区域利润贡献占比</h4><div id='c2' class='chart-wrapper'></div></div><div class='section'><p>）</p>
+<p><strong>发现3：电子产品陷入规模陷阱——近半营收，利润率却垫底</strong> 
+电子产品营收2,399万，占总营收48.4%，利润占比仅22.9%（图12），利润率10.6%为所有品类最低（图4）。其利润均值与家居用品（966元）差异不显著（p=0.79），与服装（869元）的差异虽显著但效应量仅0.037，几乎无实质差距。归因：成本与销售额相关系数高达0.992，电子产品高流量属性未能转化为利润，实质是“增收不增利”。过度依赖该品类将拉低整体盈利水平，需控制其促销力度或搭配高利润品类销售。 
+（</p></div><div class='chart-box'><h4>各品类利润贡献占比（电子产品利润占比仅22.9%，远低于其营收占比48.4%）</h4><div id='c3' class='chart-wrapper'></div></div><div class='section'><p>）</p>
+<p><strong>发现4：线上渠道高退款吞噬利润，线下客单价优势明显</strong> 
+线上退款率5.1%，是线下（1.7%）的3倍；线上客单价3,112元，显著低于线下3,859元（Welch t-test p&lt;0.001，效应量-0.146）。按平均订单额计算，每100单退款约损失1.56万元毛利。归因：线上退货门槛低、商品与描述不符风险高，且低客单价订单占比大。线上渠道虽贡献订单量，但其隐形成本正在侵蚀利润，亟需引入退货运费门槛或完善商品详情信息，降低无效退货。 
+（</p></div><div class='chart-box'><h4>各渠道退款率对比（线上5.1%为线下3倍）</h4><div id='c4' class='chart-wrapper'></div></div><div class='section'><p>）</p>
+<p><strong>发现5：订单销售额高度右偏，前20%大单贡献62%营收</strong> 
+销售额偏度5.49，中位数仅1,670元，均值却达3,291元，分布被少数大单拉高。Top20%订单贡献了62.2%营收（图8）。归因：大额企业采购或批发订单驱动，客户集中度高。该结构意味着若流失数个头部客户，营收将剧烈震荡。建议建立大客户分级预警机制，并拓展中小客户群以分散风险。 
+（</p></div><div class='chart-box'><h4>订单销售额分布（右偏严重，Top20%贡献62.2%营收）</h4><div id='c5' class='chart-wrapper'></div></div><div class='section'><p>）</p>
+<p><strong>发现6：未来3个月预测不确定性极高，趋势微弱且噪音大</strong> 
+预测日均营收约9万元，但区间宽至1.4万~16万元，可预测性为低（R²≈0）。月度环比虽在2025年6月激增105%，但趋势不显著（p=0.28），主要受6月中旬异常峰值驱动（窗口均值118万，较基线+115%）。季节性强度仅0.014，无明显周期。预算与备货若采信点预测将面临大幅偏差，必须以保守情景（下限约2万元/日）安排现金流和采购，预留充足缓冲。 
+（</p></div><div class='chart-box'><h4>未来3个月营收预测（趋势不显著，波动大，R²≈0）</h4><div id='c6' class='chart-wrapper'></div></div><div class='section'><p>）</p></div><div class='section'><h3>三、维度分析</h3>
+<p><strong>时间趋势：月度营收波动大，异常峰值频发但无稳定趋势</strong> 
+营收和利润走势高度同步，但2025年6月异常峰值（环比+105%）由短暂窗口驱动，不构成趋势信号（p=0.28）。此前2024年6月、2024年11月亦出现类似脉冲，可能与大促或活动有关，但无法据此做月度规划。整体趋势微升（斜率7.82）但不显著（p=0.48），月度预测价值低。 
+（</p></div><div class='chart-box'><h4>月度营收与利润趋势（2024-01 ~ 2025-06）</h4><div id='c7' class='chart-wrapper'></div></div><div class='section'><p>）</p>
+<p><strong>区域×品类：华东+电子产品是绝对营收核心，但利润效率需警惕</strong> 
+热力图显示华东-电子产品组合贡献最高营收（图10），但受电子产品利润率低（10.6%）的影响，该组合的利润转化弱于华东-家居或华东-服装。资源强化此组合能稳营收，但提升利润需引导该区客户向高利润品类迁移。 
+（</p></div><div class='chart-box'><h4>区域×品类营收热力图（华东+电子产品=绝对核心）</h4><div id='c8' class='chart-wrapper'></div></div><div class='section'><p>）</p>
+<p><strong>品类结构：电子产品独大，食品饮料边缘化</strong> 
+电子产品营收占比48.4%（图3），食品饮料仅4.2%。同时，利润率对比鲜明：电子产品10.6%最低，家居用品和服装分别约为高个位数（具体利润率详见发现3）。品类结构严重偏斜，抗风险能力和利润弹性均不足，急需提升高利润品类占比。 
+（</p></div><div class='chart-box'><h4>各品类营收占比（电子产品独占48.4%）</h4><div id='c9' class='chart-wrapper'></div></div><div class='chart-box'><h4>各品类利润率对比（电子产品利润率垫底仅10.6%）</h4><div id='c10' class='chart-wrapper'></div></div><div class='section'><p>）</p>
+<p><strong>渠道对比：线下客单价最高，线上走量但危机暗藏</strong> 
+线下平均订单额3,859元，显著高于线上3,112元和分销2,868元（ANOVA p&lt;0.001）。线上订单量最大但客单价低，且退款率最高（5.1%）。分销渠道订单量最小，退款率最低，适合作为低成本补充。应从“冲量”思维转向“利润渠道”建设，提高线下高客单场景的覆盖。 
+（</p></div><div class='chart-box'><h4>各渠道营收对比（线下客单价最高 p<0.001）</h4><div id='c11' class='chart-wrapper'></div></div><div class='section'><p>）</p>
+<p><strong>渠道×客户类型：线上个人客户贡献40.3%营收，线下企业客单价亮眼</strong> 
+热力图显示，线上-个人组合贡献40.3%营收（图11），但该组合客单价低、退款率高。线下-企业组合虽规模较小，但客单价突出，是利润优质来源。优化方向应推动企业客户向线下迁移或提升线上企业专属服务，改善收入质量。 
+（</p></div><div class='chart-box'><h4>渠道×客户类型营收热力图（线上个人占比40.3%）</h4><div id='c12' class='chart-wrapper'></div></div><div class='section'><p>）</p></div><div class='section'><h3>四、行动建议</h3>
+<ul>
+<li>🔴 将华东列为战略重点区域，投入营销与供应链资源，复制其成功模式至华南、华北 — 依据：华东营收与利润占比均居首，是东北的2.1倍（发现1、发现2） → 预期年营收增速提升3-5个百分点。</li>
+<li>🔴 主动调整品类结构，将家居用品、服装营收占比提升至30%以上 — 依据：电子产品利润占比仅22.9%，显著低于其营收占比（发现3），且利润率高品类供给不足（图4） → 预期整体利润率提升1.5-2个百分点。</li>
+<li>🔴 对线上渠道实施退款门槛（如退货运费部分承担）并完善商品详情页 — 依据：线上退款率5.1%为线下3倍，侵蚀利润（发现4） → 预期退款率降至4%以下，年节省利润约数十万元（需结合GMV测算）。</li>
+<li>🟡 建立前20%大客户分级专属服务与流失预警机制 — 依据：Top20%订单贡献62%营收，集中风险高（发现5） → 预期大客户流失率降低20%，减少营收波动。</li>
+<li>🟡 未来季度预算按保守场景（日均营收2万元）制定，缩短评估周期 — 依据：预测可预测性低，下限1.4万元，异常峰值不可持续（发现6） → 预期避免超量备货，降低库存成本。</li>
+<li>🟢 开拓线下企业客户专项通道，提升高客单价订单占比 — 依据：线下平均客单价3,859元，企业客户线下占比高（图5、图11） → 预期客单价进一步提升，改善整体利润率。</li>
+</ul></div><div class='section'><h3>五、风险与局限</h3>
+<ul>
+<li>🔴 数据问题：退款样本仅约600条（占总订单4%），退款分析在细分维度（如区域×品类）可能样本不足，结论外推需审慎。</li>
+<li>🟡 统计局限：营收预测R²≈0，趋势不显著，预测仅反映近期波动模式，无法捕捉未来促销或外部事件，预测结果不可直接作为决策定数。</li>
+<li>🟡 归因局限：区域与品类差异未控制促销活动、季节等混杂因素，利润归因仅基于成本结构推断，未做更严谨的因果分析。</li>
+<li>⚪ 无法回答：缺少客户累计消费数据，无法评估客户生命周期价值及留存率；无营销投入数据，无法计算品类促销ROI；无商品SKU信息，无法下钻到产品级别优化选品。</li>
+</ul></div><div class='report-footer'>由 AI 数据分析平台自动生成</div></div><script>var el=document.getElementById('c1');if(el){var ch=echarts.init(el);ch.setOption({"title": {"text": "各区域营收对比（所有区域差异显著 p<0.001）", "left": "center"}, "tooltip": {}, "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": true}, "animation": true, "xAxis": {"type": "category", "data": ["华东", "华南", "华北", "华中", "西南", "西北", "东北"]}, "yAxis": {"type": "value"}, "series": [{"name": "营收(万元)", "type": "bar", "data": [1454.8, 1105.11, 883.48, 641.37, 414.18, 250.99, 204.78]}]});window.addEventListener('resize',function(){ch.resize();});}var el=document.getElementById('c2');if(el){var ch=echarts.init(el);ch.setOption({"title": {"text": "各区域利润贡献占比", "left": "center"}, "tooltip": {}, "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": true}, "animation": true, "series": [{"type": "pie", "radius": "60%", "data": [{"name": "华东", "value": 29.7}, {"name": "华南", "value": 22.5}, {"name": "华北", "value": 17.4}, {"name": "华中", "value": 12.8}, {"name": "西南", "value": 8.4}, {"name": "西北", "value": 5.2}, {"name": "东北", "value": 4.1}]}]});window.addEventListener('resize',function(){ch.resize();});}var el=document.getElementById('c3');if(el){var ch=echarts.init(el);ch.setOption({"title": {"text": "各品类利润贡献占比（电子产品利润占比仅22.9%，远低于其营收占比48.4%）", "left": "center"}, "tooltip": {}, "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": true}, "animation": true, "series": [{"type": "pie", "radius": "60%", "data": [{"name": "电子产品", "value": 22.9}, {"name": "家居用品", "value": 20.7}, {"name": "服装", "value": 20.3}, {"name": "美妆个护", "value": 16.1}, {"name": "运动户外", "value": 15.7}, {"name": "食品饮料", "value": 4.3}]}]});window.addEventListener('resize',function(){ch.resize();});}var el=document.getElementById('c4');if(el){var ch=echarts.init(el);ch.setOption({"title": {"text": "各渠道退款率对比（线上5.1%为线下3倍）", "left": "center"}, "tooltip": {}, "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": true}, "animation": true, "xAxis": {"type": "category", "data": ["线上", "分销", "线下"]}, "yAxis": {"type": "value"}, "series": [{"name": "退款率(%)", "type": "bar", "data": [5.1, 3.0, 1.7]}]});window.addEventListener('resize',function(){ch.resize();});}var el=document.getElementById('c5');if(el){var ch=echarts.init(el);ch.setOption({"title": {"text": "订单销售额分布（右偏严重，Top20%贡献62.2%营收）", "left": "center"}, "tooltip": {}, "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": true}, "animation": true, "xAxis": {"type": "category", "data": ["P5", "P25", "P50", "P75", "P95"]}, "yAxis": {"type": "value"}, "series": [{"name": "销售额(元)", "type": "bar", "data": [206.03, 730.21, 1669.88, 3848.31, 12071.08]}]});window.addEventListener('resize',function(){ch.resize();});}var el=document.getElementById('c6');if(el){var ch=echarts.init(el);ch.setOption({"title": {"text": "未来3个月营收预测（趋势不显著，波动大，R²≈0）", "left": "center"}, "tooltip": {}, "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": true}, "animation": true, "xAxis": {"type": "category", "data": ["2025-07", "2025-08", "2025-09"]}, "yAxis": {"type": "value"}, "series": [{"name": "预测营收(万元)", "type": "line", "data": [9.03, 9.14, 8.47]}, {"name": "乐观", "type": "line", "data": [16.07, 16.18, 15.51]}, {"name": "保守", "type": "line", "data": [1.99, 2.11, 1.43]}]});window.addEventListener('resize',function(){ch.resize();});}var el=document.getElementById('c7');if(el){var ch=echarts.init(el);ch.setOption({"title": {"text": "月度营收与利润趋势（2024-01 ~ 2025-06）", "left": "center"}, "tooltip": {}, "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": true}, "animation": true, "xAxis": {"type": "category", "data": ["2024-01", "2024-02", "2024-03", "2024-04", "2024-05", "2024-06", "2024-07", "2024-08", "2024-09", "2024-10", "2024-11", "2024-12", "2025-01", "2025-02", "2025-03", "2025-04", "2025-05", "2025-06"]}, "yAxis": {"type": "value"}, "series": [{"name": "营收(万元)", "type": "line", "data": [259.95, 139.59, 244.28, 232.12, 249.08, 418.83, 264.61, 252.04, 256.69, 277.71, 468.09, 320.69, 238.88, 122.05, 247.84, 247.38, 234.32, 480.58]}, {"name": "利润(万元)", "type": "line", "data": [56.05, 30.58, 55.53, 52.72, 56.18, 97.42, 56.61, 56.81, 57.19, 62.99, 101.63, 69.48, 56.0, 26.4, 57.51, 55.85, 52.74, 103.44]}]});window.addEventListener('resize',function(){ch.resize();});}var el=document.getElementById('c8');if(el){var ch=echarts.init(el);ch.setOption({"title": {"text": "区域×品类营收热力图（华东+电子产品=绝对核心）", "left": "center"}, "tooltip": {}, "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": true}, "animation": true, "xAxis": {"type": "category", "data": ["华东", "华南", "华北", "华中", "西南", "西北", "东北"], "splitArea": {"show": true}}, "yAxis": {"type": "category", "data": ["电子产品", "家居用品", "服装", "运动户外", "美妆个护", "食品饮料"], "splitArea": {"show": true}}, "visualMap": {"min": 0, "max": 689.53, "calculable": true, "orient": "horizontal", "left": "center", "bottom": 0, "inRange": {"color": ["#f7fbff", "#08519c"]}}, "series": [{"type": "heatmap", "data": [[0, 0, 689.53], [0, 1, 244.5], [0, 2, 174.36], [0, 3, 176.34], [0, 4, 110.2], [0, 5, 59.87], [1, 0, 533.01], [1, 1, 176.11], [1, 2, 152.47], [1, 3, 119.64], [1, 4, 80.25], [1, 5, 43.61], [2, 0, 445.76], [2, 1, 141.03], [2, 2, 104.57], [2, 3, 96.33], [2, 4, 61.73], [2, 5, 34.06], [3, 0, 319.66], [3, 1, 101.55], [3, 2, 82.1], [3, 3, 62.86], [3, 4, 46.69], [3, 5, 28.52], [4, 0, 202.75], [4, 1, 65.27], [4, 2, 48.54], [4, 3, 45.98], [4, 4, 32.12], [4, 5, 19.52], [5, 0, 116.53], [5, 1, 41.44], [5, 2, 32.77], [5, 3, 27.99], [5, 4, 20.15], [5, 5, 12.11], [6, 0, 91.88], [6, 1, 32.64], [6, 2, 28.86], [6, 3, 24.36], [6, 4, 16.74], [6, 5, 10.3]], "label": {"show": true, "fontSize": 10}}]});window.addEventListener('resize',function(){ch.resize();});}var el=document.getElementById('c9');if(el){var ch=echarts.init(el);ch.setOption({"title": {"text": "各品类营收占比（电子产品独占48.4%）", "left": "center"}, "tooltip": {}, "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": true}, "animation": true, "series": [{"type": "pie", "radius": "60%", "data": [{"name": "电子产品", "value": 48.4}, {"name": "家居用品", "value": 16.2}, {"name": "服装", "value": 12.6}, {"name": "运动户外", "value": 11.2}, {"name": "美妆个护", "value": 7.4}, {"name": "食品饮料", "value": 4.2}]}]});window.addEventListener('resize',function(){ch.resize();});}var el=document.getElementById('c10');if(el){var ch=echarts.init(el);ch.setOption({"title": {"text": "各品类利润率对比（电子产品利润率垫底仅10.6%）", "left": "center"}, "tooltip": {}, "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": true}, "animation": true, "xAxis": {"type": "category", "data": ["美妆个护", "服装", "运动户外", "家居用品", "食品饮料", "电子产品"]}, "yAxis": {"type": "value"}, "series": [{"name": "利润率(%)", "type": "bar", "data": [48.3, 35.9, 31.4, 28.5, 22.9, 10.6]}]});window.addEventListener('resize',function(){ch.resize();});}var el=document.getElementById('c11');if(el){var ch=echarts.init(el);ch.setOption({"title": {"text": "各渠道营收对比（线下客单价最高 p<0.001）", "left": "center"}, "tooltip": {}, "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": true}, "animation": true, "xAxis": {"type": "category", "data": ["线上", "线下", "分销"]}, "yAxis": {"type": "value"}, "series": [{"name": "营收(万元)", "type": "bar", "data": [2454.46, 1733.37, 766.88]}]});window.addEventListener('resize',function(){ch.resize();});}var el=document.getElementById('c12');if(el){var ch=echarts.init(el);ch.setOption({"title": {"text": "渠道×客户类型营收热力图（线上个人占比40.3%）", "left": "center"}, "tooltip": {}, "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": true}, "animation": true, "xAxis": {"type": "category", "data": ["线上", "线下", "分销"], "splitArea": {"show": true}}, "yAxis": {"type": "category", "data": ["个人", "企业"], "splitArea": {"show": true}}, "visualMap": {"min": 0, "max": 1997.02, "calculable": true, "orient": "horizontal", "left": "center", "bottom": 0, "inRange": {"color": ["#f7fbff", "#08519c"]}}, "series": [{"type": "heatmap", "data": [[0, 0, 1997.02], [0, 1, 457.44], [1, 0, 1403.69], [1, 1, 329.68], [2, 0, 612.7], [2, 1, 154.18]], "label": {"show": true, "fontSize": 10}}]});window.addEventListener('resize',function(){ch.resize();});}</script></body></html>
