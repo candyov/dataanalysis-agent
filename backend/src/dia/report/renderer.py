@@ -88,12 +88,29 @@ def _extract_kpis(state: dict) -> list[dict]:
     """
     kpis: list[dict] = []
 
-    # 1. 实时查询数据源 (有 source_id 且有 KPI 能力时)
+    # 1. 实时查询数据源 (有 source_id 且有 KPI 能力时) — 最可靠, 优先采用
     kpis = _extract_kpis_from_db(state)
-    if len(kpis) >= 4:
+    if kpis:
+        # 2. 文本源兜底只**补齐缺失 label** (不覆盖 DB 结果, 防正则误匹配混入错值)
+        text_kpis = _extract_kpis_from_text(state)
+        seen = {k["label"] for k in kpis}
+        for k in text_kpis:
+            if k["label"] not in seen:
+                kpis.append(k)
+                seen.add(k["label"])
         return kpis[:6]
 
-    # 2. 文本源提取兜底
+    # 无 DB 能力时纯文本兜底
+    return _extract_kpis_from_text(state)[:6]
+
+
+def _extract_kpis_from_text(state: dict) -> list[dict]:
+    """从文本源 (curator_report / analysis.summary / reporter.summary) 正则提取 KPI.
+
+    单位强制 (万|元 / 笔|单|个 / 人|位): 防"占比48.4%""p=0.0744"等派生值误匹配;
+    负向前瞻排除"每单销售额"(=客单价) 与"18个月"(=跨度).
+    """
+    kpis: list[dict] = []
     shared = state.get("shared_context", {}) or {}
     data = state.get("data", {}) or {}
     analysis = state.get("analysis", {}) or {}
@@ -108,13 +125,12 @@ def _extract_kpis(state: dict) -> list[dict]:
             texts.append(src)
 
     kpi_patterns = [
-        (r"总营收[^0-9]*?([\d,]+\.?\d*)\s*(万|元)?", "总营收"),
-        (r"总销售额[^0-9]*?([\d,]+\.?\d*)\s*(万|元)?", "总销售额"),
-        (r"销售额[^0-9]*?([\d,]+\.?\d*)\s*(万|元)?", "总销售额"),
+        (r"总营收[^0-9]*?([\d,]+\.?\d*)\s*(万|元)", "总营收"),
+        (r"(?<!每单)(?<!平均每单)(?:总)?销售额[^0-9]*?([\d,]+\.?\d*)\s*(万|元)", "总销售额"),
         (r"利润[率]?[^0-9]*?([\d,]+\.?\d*)\s*(%|万|元)?", "利润率"),
-        (r"订单[数]?[^0-9]*?([\d,]+\.?\d*)\s*(笔|单|个)?", "订单数"),
-        (r"客户[数]?[^0-9]*?([\d,]+\.?\d*)\s*(人|位)?", "客户数"),
-        (r"成本[^0-9]*?([\d,]+\.?\d*)\s*(万|元)?", "总成本"),
+        (r"订单[数]?[^0-9]*?([\d,]+\.?\d*)\s*(?!个月)(笔|单|个)", "订单数"),
+        (r"客户[数]?[^0-9]*?([\d,]+\.?\d*)\s*(人|位)", "客户数"),
+        (r"成本[^0-9]*?([\d,]+\.?\d*)\s*(万|元)", "总成本"),
         (r"客单价[^0-9]*?([\d,]+\.?\d*)\s*(元)?", "客单价"),
     ]
 
@@ -225,6 +241,7 @@ def _extract_kpis_from_db(state: dict) -> list[dict]:
                 return f"{v:,.0f}"
 
             kpis.append({"label": "总营收", "value": _fmt(total), "detail": ""})
+            kpis.append({"label": "总销售额", "value": _fmt(total), "detail": ""})
             cost = float(row.get("total_cost") or 0)
             if cost > 0:
                 kpis.append({"label": "利润率", "value": f"{(total-cost)/total*100:.1f}%", "detail": ""})
@@ -633,7 +650,7 @@ _TEMPLATE = """<!DOCTYPE html>
   </div>
   {kpi_html}
   {body_html}
-  <div class="report-footer">由 Data Intelligence Agent 自动生成 · {generated_at}</div>
+  <div class="report-footer">由 AI 数据分析平台自动生成 · {generated_at}</div>
 </div>
 <script>
 {chart_js}
@@ -967,7 +984,7 @@ def _render_legacy(data: dict) -> str:
   <div class="section"><div class="section-title">📈 可视化分析</div>{charts_html}</div>
   <div class="section"><div class="section-title">🔍 关键发现</div><div class="section">{findings_html}</div></div>
   {suggestions_html}
-  <div class="report-footer">由 Data Intelligence Agent 自动生成 · {meta["generated_at"]}</div>
+  <div class="report-footer">由 AI 数据分析平台自动生成 · {meta["generated_at"]}</div>
 </div>
 <script>{chart_js}</script>
 </body>
