@@ -5,7 +5,13 @@
 > 输入：「全面分析这份数据，为什么华东最强，有没有异常？」
 > 输出：一份带统计证据和图表的完整商业分析报告。
 
-> 🖥️ **在线演示**: [查看样例分析报告](https://candyov.github.io/dataanalysis-agent/)(GitHub Pages 静态演示 — 真实分析产出的 12 图表完整报告)
+> 🖼️ **演示效果**: 以下为真实分析产出的报告截图(1.5 万行零售订单, 全面分析):
+
+![报告 1/5 — 核心结论与关键发现](docs/images/report_part1.png)
+![报告 2/5 — 关键发现](docs/images/report_part2.png)
+![报告 3/5 — 趋势与图表](docs/images/report_part3.png)
+![报告 4/5 — 维度分析](docs/images/report_part4.png)
+![报告 5/5 — 建议与风险](docs/images/report_part5.png)
 
 ## 技术栈
 
