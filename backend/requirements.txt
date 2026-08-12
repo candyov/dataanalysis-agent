@@ -14,6 +14,7 @@ openpyxl>=3.1.0
 scikit-learn>=1.5.0
 pydantic>=2.10.0
 pydantic-settings>=2.7.0
+cryptography>=42.0.0  # Fernet 数据源密码加密 (config_store)
 
 # Dev
 pytest>=8.0
