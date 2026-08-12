@@ -131,12 +131,20 @@ def _extract_kpis_from_text(state: dict) -> list[dict]:
         (r"订单[数]?[^0-9]*?([\d,]+\.?\d*)\s*(?!个月)(笔|单|个)", "订单数"),
         (r"客户[数]?[^0-9]*?([\d,]+\.?\d*)\s*(人|位)", "客户数"),
         (r"成本[^0-9]*?([\d,]+\.?\d*)\s*(万|元)", "总成本"),
-        (r"客单价[^0-9]*?([\d,]+\.?\d*)\s*(元)?", "客单价"),
+        (r"客单价[^0-9]{0,20}?([\d,]+\.?\d*)\s*(元)?", "客单价"),
     ]
 
     def _add(label: str, val: str, unit: str) -> bool:
         if any(k["label"] == label for k in kpis):
             return False
+        # 合理性过滤: 计数类 KPI (订单/客户) 值 < 10 基本是跨句误匹配
+        # (如 "订单平均 2 个" 之类), 真实业务计数远大于此
+        if label in ("订单数", "客户数"):
+            try:
+                if float(val.replace(",", "")) < 10:
+                    return False
+            except ValueError:
+                return False
         kpis.append({"label": label, "value": f"{val}{unit}", "detail": ""})
         return True
 
