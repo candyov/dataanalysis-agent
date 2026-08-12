@@ -2,6 +2,27 @@
 import { ref, onBeforeUnmount } from 'vue'
 import type { ECharts } from 'echarts'
 
+/**
+ * 自动补图例: 系列带 name 但 option 无 legend 时注入 (否则折线/柱状图
+ * 无法区分哪条线/哪个柱子代表什么). 同时下移 grid 顶部防与图例重叠.
+ */
+function ensureLegend(option: Record<string, any>): Record<string, any> {
+  if (!option || !Array.isArray(option.series) || option.series.length === 0) return option
+  const hasNamedSeries = option.series.some(
+    (s: any) => s && typeof s.name === 'string' && s.name.trim() !== ''
+  )
+  if (!hasNamedSeries || option.legend != null) return option
+  const patched = { ...option, legend: { top: 0, left: 'center', textStyle: { fontSize: 11 } } }
+  if (patched.grid) {
+    const g = { ...patched.grid }
+    const top = g.top
+    if (typeof top === 'number' && top < 30) g.top = top + 28
+    else if (typeof top === 'string' && top.replace('%', '') && parseFloat(top) < 12) g.top = '12%'
+    patched.grid = g
+  }
+  return patched
+}
+
 export function useCharts() {
   const chartInstances = new Map<string, ECharts>()
   const chartRefs = ref<Record<string, HTMLElement>>({})
@@ -28,7 +49,7 @@ export function useCharts() {
     observer.observe(el)
     ;(el as any).__resizeObserver = observer
 
-    instance.setOption(option, true)
+    instance.setOption(ensureLegend(option), true)
   }
 
   function disposeChart(id: string) {
