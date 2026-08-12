@@ -278,8 +278,9 @@ async def get_session_data(session_id: str):
     if not blueprint:
         raise HTTPException(404, "该会话暂无报告蓝图数据 (分析未完成或 Curator 未生成)")
 
-    # row_count 兜底: blueprint.overview.row_count 为 "?" 时, 从 state.data 取真实行数
-    # (旧会话/探查未回填 row_count 的会话, KPI 卡片会显示 "?" — 这里统一修正)
+    # row_count 兜底: blueprint.overview.row_count 为 "?" 时, 依次从
+    # state.data → 实时查主表 COUNT(*) 取真实行数
+    # (缓存命中会话 data 为空, 蓝图恢复的 row_count 是 "?" — 这里统一修正)
     bp_overview = blueprint.setdefault("overview", {})
     if not bp_overview.get("row_count") or bp_overview.get("row_count") == "?":
         data_out = state.get("data", {}) or {}
@@ -289,6 +290,29 @@ async def get_session_data(session_id: str):
             bp_overview["row_count"] = int(rc)
         elif isinstance(rc, str) and rc.isdigit():
             bp_overview["row_count"] = int(rc)
+        else:
+            # 实时查主表 COUNT(*)
+            try:
+                from dia.infrastructure.database.manager import get_datasource_manager
+                source_id = (state.get("source_id")
+                             or (state.get("shared_context") or {}).get("source_id")
+                             or data_out.get("source_id", ""))
+                if source_id:
+                    _mgr = get_datasource_manager()
+                    _conn = _mgr.connect(source_id)
+                    _tables = _conn.list_tables()
+                    if _tables:
+                        _schema = _conn.get_schema()
+
+                        def _score(t):
+                            names = [c["name"].lower() for c in _schema.get(t, {}).get("columns", [])]
+                            return 2 if any(n in ("sales", "revenue", "amount", "gmv", "销售额", "营收", "order") for n in names) else 1
+                        _main = max(_tables, key=_score)
+                        _r = _conn.query(f"SELECT COUNT(*) AS n FROM {_main}", max_rows=None)
+                        if "error" not in _r and _r.get("rows"):
+                            bp_overview["row_count"] = int(_r["rows"][0]["n"])
+            except Exception as e:
+                logger.warning(f"[chat] row_count 实时兜底失败: {e}")
 
     return {
         "session_id": session_id,
