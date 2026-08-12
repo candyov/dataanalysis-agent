@@ -547,6 +547,41 @@ def _build_from_blueprint(state: dict, blueprint: dict) -> dict:
         "report": "",
     }
 
+    # row_count 兜底: 蓝图 overview.row_count 为 "?"/缺失 (缓存命中恢复的蓝图
+    # 常无此字段, state.data 也为空) → 依次从 state.data / 实时查主表 COUNT(*) 补上
+    overview = dict(blueprint.get("overview", {}) or {})
+    if not overview.get("row_count") or overview.get("row_count") == "?":
+        data_out = state.get("data", {}) or {}
+        structured = data_out.get("structured_data", {}) or {}
+        rc = structured.get("row_count") or data_out.get("row_count")
+        if isinstance(rc, (int, float)) and rc > 0:
+            overview["row_count"] = int(rc)
+        elif isinstance(rc, str) and rc.isdigit():
+            overview["row_count"] = int(rc)
+        else:
+            # 实时查主表 COUNT(*) (KPI 同款连接, 快)
+            try:
+                from dia.infrastructure.database.manager import get_datasource_manager
+                source_id = (state.get("source_id")
+                             or (state.get("shared_context") or {}).get("source_id")
+                             or data_out.get("source_id", ""))
+                if source_id:
+                    _mgr = get_datasource_manager()
+                    _conn = _mgr.connect(source_id)
+                    _tables = _conn.list_tables()
+                    if _tables:
+                        _schema = _conn.get_schema()
+
+                        def _score(t):
+                            names = [c["name"].lower() for c in _schema.get(t, {}).get("columns", [])]
+                            return 2 if any(n in ("sales", "revenue", "amount", "gmv", "销售额", "营收", "order") for n in names) else 1
+                        _main = max(_tables, key=_score)
+                        _r = _conn.query(f"SELECT COUNT(*) AS n FROM {_main}", max_rows=None)
+                        if "error" not in _r and _r.get("rows"):
+                            overview["row_count"] = int(_r["rows"][0]["n"])
+            except Exception as _e:
+                logger.warning(f"[renderer] row_count 实时兜底失败: {_e}")
+
     return {
         "meta": _extract_meta(state),
         "kpis": kpis,
@@ -557,7 +592,7 @@ def _build_from_blueprint(state: dict, blueprint: dict) -> dict:
         "suggestions": _extract_suggestions(state),
         "_mode": "blueprint",
         "_chapters": chapters,  # 核心: 章节驱动渲染
-        "_overview": blueprint.get("overview", {}),
+        "_overview": overview,
         "_dimensions": blueprint.get("dimensions", []),
         "_metrics": blueprint.get("metrics", []),
     }
